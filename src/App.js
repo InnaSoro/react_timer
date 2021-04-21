@@ -1,68 +1,88 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-import './App.scss';
-import { Clock } from './Clock';
+import { interval, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
-class App extends React.Component {
-  state = {
-    isClockVisible: true,
-    clockName: Math.round(Math.random() * 100),
-  }
+export default function App() {
+  const [sec, setSec] = useState(0);
+  const [status, setStatus] = useState('stop');
+  const [lastClicked, setLastClicked] = useState(0);
 
-  componentDidMount() {
-    setInterval(() => {
-      const date = new Date();
+  useEffect(() => {
+    const unsubscribe = new Subject();
 
-      // eslint-disable-next-line
-      console.log(date.toLocaleTimeString());
-    }, 1000);
-  }
+    interval(1000)
+      .pipe(takeUntil(unsubscribe))
+      .subscribe(() => {
+        if (status === 'run') {
+          setSec(val => val + 1000);
+        }
+      });
 
-  hide = () => {
-    this.setState({ isClockVisible: false });
+    return () => {
+      unsubscribe.next();
+      unsubscribe.complete();
+    };
+  }, [status]);
+
+  const start = () => {
+    setStatus('run');
   };
 
-  show = () => {
-    this.setState({ isClockVisible: true });
+  const stop = () => {
+    setStatus('stop');
+    setSec(0);
   };
 
-  setName = () => {
-    this.setState({ clockName: Math.round(Math.random() * 100) });
-  }
+  const reset = () => {
+    setSec(0);
+  };
 
-  render() {
-    const { isClockVisible, clockName } = this.state;
+  const wait = () => {
+    const timeNow = new Date().getTime();
 
-    return (
-      <div className="App card">
-        <h1 className="card-header">React clock</h1>
-        {isClockVisible && <Clock name={clockName} />}
-        <div className="card-footer">
-          <button
-            className="button card-footer-item"
-            onClick={this.show}
-            type="button"
-          >
-            Show Clock
-          </button>
-          <button
-            className="button card-footer-item"
-            onClick={this.hide}
-            type="button"
-          >
-            Hide Clock
-          </button>
-          <button
-            className="button card-footer-item"
-            onClick={this.setName}
-            type="button"
-          >
-            Set random name
-          </button>
-        </div>
+    if ((timeNow - lastClicked) < 300) {
+      setStatus('wait');
+    }
+
+    setLastClicked(timeNow);
+  };
+
+  return (
+    <div className="card">
+      <span className="card-header-title is-centered">
+        {new Date(sec).toISOString().slice(11, 19)}
+      </span>
+      <div className="card-footer">
+        <button
+          type="button"
+          className="button card-footer-item"
+          onClick={start}
+        >
+          Start
+        </button>
+        <button
+          type="button"
+          className="button card-footer-item"
+          onClick={stop}
+        >
+          Stop
+        </button>
+        <button
+          type="button"
+          className="button card-footer-item"
+          onClick={reset}
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          className="button card-footer-item"
+          onClick={wait}
+        >
+          Wait
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
 }
-
-export default App;
